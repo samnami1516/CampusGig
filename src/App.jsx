@@ -5,13 +5,15 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showAddGig, setShowAddGig] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authType, setAuthType] = useState('Login');
   const [openFaq, setOpenFaq] = useState(null);
 
-  // Gigs State with Unique Features
+  // Initial Dynamic Gigs List
   const [gigs, setGigs] = useState([
     {
       id: 1,
-      title: 'UI/UX Design for College App',
+      title: 'UI/UX Design for College Fest App',
       category: 'Design',
       price: '₹500',
       isUrgent: true,
@@ -23,7 +25,7 @@ function App() {
     },
     {
       id: 2,
-      title: 'React JS Bug Fixing & Assignment',
+      title: 'React JS Bug Fixing & Lab Assignment',
       category: 'Coding',
       price: 'Skill Swap 🔄',
       isUrgent: false,
@@ -35,7 +37,7 @@ function App() {
     },
     {
       id: 3,
-      title: 'Python Data Analysis Notes',
+      title: 'Python Data Science Practical Notes',
       category: 'Notes',
       price: '₹300',
       isUrgent: true,
@@ -47,7 +49,7 @@ function App() {
     },
     {
       id: 4,
-      title: 'Video Editing for Event Vlogs',
+      title: 'Video Editing for Tech Fest Promo',
       category: 'Design',
       price: '₹1000',
       isUrgent: false,
@@ -98,6 +100,11 @@ function App() {
     setOpenFaq(openFaq === index ? null : index);
   };
 
+  const openAuth = (type) => {
+    setAuthType(type);
+    setShowAuthModal(true);
+  };
+
   return (
     <div className="app">
       {/* Navbar */}
@@ -109,8 +116,8 @@ function App() {
           <a href="#gigs">Explore Gigs</a>
           <a href="#reviews">Reviews</a>
           <a href="#faqs">FAQs</a>
-          <button className="btn-secondary">Login</button>
-          <button className="btn-primary" onClick={() => setShowAddGig(true)}>Join CampusGig</button>
+          <button className="btn-secondary" onClick={() => openAuth('Login')}>Login</button>
+          <button className="btn-primary" onClick={() => openAuth('Sign Up')}>Join CampusGig</button>
         </div>
       </header>
 
@@ -188,30 +195,34 @@ function App() {
               {cat}
             </button>
           ))}
-          <button className="btn-add-inline" onClick={() => setShowAddGig(true)}>+ Add New Gig</button>
+          <button className="btn-add-inline" onClick={() => setShowAddGig(true)}>+ Post New Gig</button>
         </div>
 
         {/* Gig Cards Grid */}
         <div className="gigs-grid">
-          {filteredGigs.map(gig => (
-            <div key={gig.id} className={`gig-card ${gig.isUrgent ? 'urgent-border' : ''}`}>
-              <div className="card-tags">
-                <span className="badge category">{gig.category}</span>
-                {gig.isUrgent && <span className="badge urgent">🔥 URGENT</span>}
-                {gig.paymentType === 'Skill Swap' && <span className="badge swap">🔄 SKILL SWAP</span>}
-              </div>
+          {filteredGigs.length > 0 ? (
+            filteredGigs.map(gig => (
+              <div key={gig.id} className={`gig-card ${gig.isUrgent ? 'urgent-border' : ''}`}>
+                <div className="card-tags">
+                  <span className="badge category">{gig.category}</span>
+                  {gig.isUrgent && <span className="badge urgent">🔥 URGENT</span>}
+                  {gig.paymentType === 'Skill Swap' && <span className="badge swap">🔄 SKILL SWAP</span>}
+                </div>
 
-              <h4>{gig.title}</h4>
-              <p className="price">{gig.price}</p>
-              
-              <div className="author-info">
-                <span>By {gig.author} {gig.verified && <b title="Verified Student">✅</b>}</span>
-                <span className="rating">{gig.rating}</span>
-              </div>
+                <h4>{gig.title}</h4>
+                <p className="price">{gig.price}</p>
+                
+                <div className="author-info">
+                  <span>By {gig.author} {gig.verified && <b title="Verified Student">✅</b>}</span>
+                  <span className="rating">{gig.rating}</span>
+                </div>
 
-              <a href={`mailto:${gig.contact}`} className="btn-apply">Apply Now</a>
-            </div>
-          ))}
+                <a href={`mailto:${gig.contact}?subject=Applying for: ${gig.title}`} className="btn-apply">Apply Now</a>
+              </div>
+            ))
+          ) : (
+            <p style={{textAlign: 'center', gridColumn: '1/-1', color: '#94a3b8'}}>No gigs found matching your search.</p>
+          )}
         </div>
       </section>
 
@@ -225,7 +236,7 @@ function App() {
           </div>
           <div className="review-card">
             <p>"Earned ₹2,000 in my free time helping juniors with React assignments."</p>
-            ##### - Sneha Rao (IT, 4th Year)
+            <h5>- Sneha Rao (IT, 4th Year)</h5>
           </div>
         </div>
       </section>
@@ -251,7 +262,7 @@ function App() {
 
       {/* Footer */}
       <footer className="footer">
-        <p>© 2026 CampusGig | Peer-to-Peer Marketplace | Built for College Campus Evaluation</p>
+        <p>© 2026 CampusGig | Peer-to-Peer Marketplace | Built for College Capstone Evaluation</p>
       </footer>
 
       {/* Add New Gig Modal */}
@@ -317,6 +328,23 @@ function App() {
               <div className="modal-actions">
                 <button type="submit" className="btn-primary">Post Gig</button>
                 <button type="button" className="btn-close" onClick={() => setShowAddGig(false)}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Auth Modal (Login / Sign Up) */}
+      {showAuthModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>{authType} to CampusGig</h3>
+            <form onSubmit={(e) => { e.preventDefault(); alert(`${authType} Successful!`); setShowAuthModal(false); }}>
+              <input type="email" placeholder="College Email (.edu / .ac.in)" required />
+              <input type="password" placeholder="Password" required />
+              <div className="modal-actions">
+                <button type="submit" className="btn-primary">{authType}</button>
+                <button type="button" className="btn-close" onClick={() => setShowAuthModal(false)}>Close</button>
               </div>
             </form>
           </div>
