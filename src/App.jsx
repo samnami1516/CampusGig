@@ -225,7 +225,7 @@ function App() {
           </div>
           <div className="review-card">
             <p>"Earned ₹2,000 in my free time helping juniors with React assignments."</p>
-            <h5>- Sneha Rao (IT, 4th Year)</h5>
+            ##### - Sneha Rao (IT, 4th Year)
           </div>
         </div>
       </section>
@@ -251,7 +251,7 @@ function App() {
 
       {/* Footer */}
       <footer className="footer">
-        <p>© 2026 CampusGig | Peer-to-Peer Peer Marketplace | Built for College Campus Evaluation</p>
+        <p>© 2026 CampusGig | Peer-to-Peer Marketplace | Built for College Campus Evaluation</p>
       </footer>
 
       {/* Add New Gig Modal */}
