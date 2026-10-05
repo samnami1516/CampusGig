@@ -498,3 +498,71 @@ body {
   flex: 1;
   font-weight: 600;
 }
+/* UPI Payment Modal */
+.payment-modal {
+  max-width: 480px;
+  text-align: left;
+}
+
+.pay-amount {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 5px;
+}
+
+.upi-qr {
+  width: 300px;
+  height: 300px;
+  object-fit: contain;
+  background: white;
+  padding: 8px;
+  display: block;
+  margin: 5px auto 15px;
+  border-radius: 4px;
+}
+
+.upi-id {
+  color: #cbd5e1;
+  margin-bottom: 8px;
+}
+
+.upi-id b {
+  color: #ffffff;
+}
+
+.scan-text {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+}
+
+.pay-success {
+  text-align: center;
+  padding: 30px 10px;
+}
+
+.pay-success p:first-child {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #22c55e;
+}
+
+.pay-sub {
+  color: #94a3b8;
+  margin-top: 10px;
+}
+
+.payment-modal .btn-primary {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.payment-modal .btn-close {
+  width: 100%;
+}
+
+.payment-modal button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

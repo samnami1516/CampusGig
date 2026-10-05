@@ -66,7 +66,7 @@ function App() {
       price: '₹500',
       isUrgent: true,
       paymentType: 'Paid',
-      author: 'Rahul Sharma (CS)',
+      author: 'saurabh giri (CS)',
       verified: true,
       rating: '4.9 ⭐',
       contact: 'rahul@campus.edu'
@@ -78,10 +78,10 @@ function App() {
       price: 'Skill Swap 🔄',
       isUrgent: false,
       paymentType: 'Skill Swap',
-      author: 'Priya Singh (IT)',
+      author: 'Ritika singh (IT)',
       verified: true,
       rating: '4.8 ⭐',
-      contact: 'priya@campus.edu'
+      contact: 'ritik@campus.edu'
     },
     {
       id: 3,
@@ -90,10 +90,10 @@ function App() {
       price: '₹300',
       isUrgent: true,
       paymentType: 'Paid',
-      author: 'Aman Verma (EC)',
+      author: 'hasan shaikh (EC)',
       verified: false,
       rating: '4.5 ⭐',
-      contact: 'aman@campus.edu'
+      contact: 'hasan@campus.edu'
     },
     {
       id: 4,
@@ -102,10 +102,10 @@ function App() {
       price: '₹1000',
       isUrgent: false,
       paymentType: 'Paid',
-      author: 'Neha Gupta (CE)',
+      author: 'sunny gupta (CE)',
       verified: true,
       rating: '5.0 ⭐',
-      contact: 'neha@campus.edu'
+      contact: 'sunnygupta@campus.edu'
     }
   ]);
  
@@ -310,11 +310,11 @@ function App() {
       {/* Stats Section */}
       <section className="stats-section">
         <div className="stat-card">
-          <h3>500+</h3>
+          <h3>1000+</h3>
           <p>Active Students</p>
         </div>
         <div className="stat-card">
-          <h3>120+</h3>
+          <h3>500+</h3>
           <p>Gigs Completed</p>
         </div>
         <div className="stat-card">
@@ -605,36 +605,80 @@ function App() {
         );
       })()}
  
-      {/* Payment Modal (UPI Mock) */}
+      {/* Payment Modal (UPI) */}
       {paymentOpenFor && (() => {
         const amountDigits = paymentOpenFor.price.match(/\d+/g);
         const amount = amountDigits ? amountDigits.join('') : '0';
-        const upiLink = `upi://pay?pa=campusgig@upi&pn=CampusGig&am=${amount}&cu=INR`;
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
+
+        // IMPORTANT: Put your REAL and ACTIVE UPI ID here
+        const upiId = "giripawan470@okicici";
+
+        const merchantName = "CampusGig";
+
+        const upiLink =
+          `upi://pay?pa=${encodeURIComponent(upiId)}` +
+          `&pn=${encodeURIComponent(merchantName)}` +
+          `&am=${encodeURIComponent(amount)}` +
+          `&cu=INR`;
+
+        const qrUrl =
+          `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiLink)}`;
+
         return (
           <div className="modal-overlay" onClick={closePayment}>
-            <div className="modal payment-modal" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="modal payment-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
               <h3>Pay via UPI</h3>
-              <p className="pay-amount">{paymentOpenFor.price}</p>
+
+              <p className="pay-amount">
+                ₹{amount}
+              </p>
+
               {paymentStatus === 'success' ? (
                 <div className="pay-success">
                   <p>✅ Payment Successful!</p>
-                  <p className="pay-sub">Sent to {paymentOpenFor.author} for "{paymentOpenFor.title}"</p>
+
+                  <p className="pay-sub">
+                    Payment completed for "{paymentOpenFor.title}"
+                  </p>
                 </div>
               ) : (
                 <>
-                  <img className="upi-qr" src={qrUrl} alt="UPI QR Code" />
-                  <p className="upi-id">UPI ID: <b>campusgig@upi</b></p>
+                  <img
+                    className="upi-qr"
+                    src={qrUrl}
+                    alt="UPI Payment QR Code"
+                  />
+
+                  <p className="upi-id">
+                    UPI ID: <b>{upiId}</b>
+                  </p>
+
+                  <p className="scan-text">
+                    Scan this QR code using Google Pay, PhonePe or Paytm
+                  </p>
+
                   <button
                     className="btn-primary"
                     disabled={paymentStatus === 'processing'}
                     onClick={simulatePayment}
                   >
-                    {paymentStatus === 'processing' ? 'Processing...' : 'Simulate Payment'}
+                    {paymentStatus === 'processing'
+                      ? 'Processing...'
+                      : 'Simulate Payment'}
                   </button>
                 </>
               )}
-              <button className="btn-close" onClick={closePayment}>Close</button>
+
+              <button
+                className="btn-close"
+                onClick={closePayment}
+                disabled={paymentStatus === 'processing'}
+              >
+                Close
+              </button>
             </div>
           </div>
         );
