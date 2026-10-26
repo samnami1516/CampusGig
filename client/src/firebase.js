@@ -1,22 +1,19 @@
-// src/firebase.js
 
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
+    apiKey: "AIzaSyDGcJzDFlXtGC4chiZYkLIMVRpzU7AVimI",
     authDomain: "campusgig-42702.firebaseapp.com",
     projectId: "campusgig-42702",
     storageBucket: "campusgig-42702.firebasestorage.app",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    messagingSenderId: "611524681253",
+    appId: "1:611524681253:web:4ab4e75477a8276d4ea9cc",
+    measurementId: "G-Y964B3V3PD"
 };
 
 const app = initializeApp(firebaseConfig);
 
-// Firestore
 export const db = getFirestore(app);
-
-// Authentication
 export const auth = getAuth(app);
