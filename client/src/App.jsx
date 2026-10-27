@@ -33,7 +33,7 @@ const currentTime = () =>
     minute: '2-digit'
   });
 
-// CampusGig logo icon (inline SVG, koi extra file nahi chahiye)
+// CampusGig logo icon (inline SVG)
 const LogoIcon = ({ size = 40 }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -113,6 +113,12 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authType, setAuthType] = useState('Login');
   const [openFaq, setOpenFaq] = useState(null);
+
+  // NEW FEATURES STATE
+  const [examMode, setExamMode] = useState(false);
+  const [skillSwapOffer, setSkillSwapOffer] = useState('');
+  const [skillSwapWant, setSkillSwapWant] = useState('');
+  const [matchedPeers, setMatchedPeers] = useState([]);
 
   // ==============================
   // THEME
@@ -196,7 +202,6 @@ function App() {
     setAuthError('');
   };
 
-  // Login ke bina action rokne ke liye
   const requireLogin = () => {
     if (!firebaseUser) {
       openAuth('Login');
@@ -317,9 +322,9 @@ function App() {
   };
 
   // ==============================
-  // INITIAL GIGS
+  // INITIAL GIGS & FIRESTORE REALTIME SYNC
   // ==============================
-  const [gigs, setGigs] = useState([
+  const defaultGigs = [
     {
       id: 1,
       title: 'UI/UX Design for College Fest App',
@@ -368,7 +373,42 @@ function App() {
       rating: '5.0 ⭐',
       contact: 'sunnygupta@campus.edu'
     }
-  ]);
+  ];
+
+  const [gigs, setGigs] = useState(defaultGigs);
+
+  useEffect(() => {
+    const q = query(collection(db, 'gigs'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const fetchedGigs = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setGigs([...fetchedGigs, ...defaultGigs]);
+      }
+    }, (err) => console.log('Firestore Gigs Sync Notice:', err));
+
+    return () => unsubscribe();
+  }, []);
+
+  // LEADERBOARD DATA
+  const leaderboard = [
+    { name: 'Saurabh Giri', branch: 'CS', earned: '₹12,500', badge: 'Top Designer 🏆' },
+    { name: 'Ritika Singh', branch: 'IT', earned: '₹9,800', badge: 'Fast Delivery ⚡' },
+    { name: 'Hasan Shaikh', branch: 'DS', earned: '₹7,200', badge: 'Notes Scholar 📚' }
+  ];
+
+  const handleSkillMatch = (e) => {
+    e.preventDefault();
+    if (!skillSwapOffer || !skillSwapWant) return;
+    const matches = gigs.filter(
+      (gig) =>
+        gig.title.toLowerCase().includes(skillSwapWant.toLowerCase()) ||
+        gig.category.toLowerCase().includes(skillSwapWant.toLowerCase())
+    );
+    setMatchedPeers(matches);
+  };
 
   // ==============================
   // NEW GIG FORM
@@ -394,9 +434,9 @@ function App() {
   };
 
   // ==============================
-  // ADD GIG
+  // ADD GIG (Saves to State + Firestore)
   // ==============================
-  const handleAddGig = (e) => {
+  const handleAddGig = async (e) => {
     e.preventDefault();
 
     if (!requireLogin()) return;
@@ -414,6 +454,16 @@ function App() {
     };
 
     setGigs([gigToAdd, ...gigs]);
+
+    try {
+      await addDoc(collection(db, 'gigs'), {
+        ...gigToAdd,
+        createdAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error('Error saving gig to Firestore:', err);
+    }
+
     setShowAddGig(false);
 
     setNewGig({
@@ -610,7 +660,9 @@ function App() {
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
 
-    return matchesCategory && matchesSearch;
+    const matchesExamMode = !examMode || gig.category === 'Notes' || gig.isUrgent;
+
+    return matchesCategory && matchesSearch && matchesExamMode;
   });
 
   // ==============================
@@ -676,6 +728,19 @@ function App() {
           </div>
 
           <div className="nav-actions">
+            {/* EXAM MODE BUTTON */}
+            <button
+              className="btn-secondary"
+              onClick={() => setExamMode(!examMode)}
+              style={{
+                background: examMode ? '#e74c3c' : '',
+                color: examMode ? '#fff' : '',
+                borderColor: examMode ? '#e74c3c' : ''
+              }}
+            >
+              {examMode ? '📚 Exam Mode ON' : '🎓 Normal Mode'}
+            </button>
+
             <button
               className="icon-btn theme-toggle"
               onClick={toggleTheme}
@@ -765,379 +830,234 @@ function App() {
           campus tasks.
         </p>
 
-        <div className="hero-buttons">
+        <div className="hero-buttons" style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
           <a href="#gigs" className="btn-primary">
-            🔍 Explore Gigs
+            Explore Gigs
           </a>
-
-          <button className="btn-outline" onClick={openAddGig}>
+          <button className="btn-secondary" onClick={openAddGig}>
             💼 Post a Gig
           </button>
         </div>
       </section>
 
       {/* ==========================
-          STATS
+          UNIQUE FEATURE 1: SKILL SWAP MATCHER
       =========================== */}
-      <section className="stats-section">
-        <div className="stat-card">
-          <h3>1000+</h3>
-          <p>Active Students</p>
-        </div>
+      <section className="container" style={{ margin: '30px auto', padding: '0 20px' }}>
+        <div style={{ background: 'var(--card-bg, #ffffff)', padding: '25px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ margin: '0 0 15px 0', fontSize: '1.3rem' }}>🔄 Skill Swap Matcher</h3>
+          <form onSubmit={handleSkillMatch} style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              placeholder="Skill you CAN offer (e.g. React)"
+              value={skillSwapOffer}
+              onChange={(e) => setSkillSwapOffer(e.target.value)}
+              style={{ flex: 1, minWidth: '200px', padding: '10px 15px', borderRadius: '8px', border: '1px solid #ccc' }}
+            />
+            <input
+              type="text"
+              placeholder="Skill you WANT (e.g. Figma)"
+              value={skillSwapWant}
+              onChange={(e) => setSkillSwapWant(e.target.value)}
+              style={{ flex: 1, minWidth: '200px', padding: '10px 15px', borderRadius: '8px', border: '1px solid #ccc' }}
+            />
+            <button type="submit" className="btn-primary">Find Match</button>
+          </form>
 
-        <div className="stat-card">
-          <h3>500+</h3>
-          <p>Gigs Completed</p>
-        </div>
-
-        <div className="stat-card">
-          <h3>₹45,000+</h3>
-          <p>Earned by Peers</p>
+          {matchedPeers.length > 0 && (
+            <div style={{ marginTop: '15px', padding: '12px', background: 'rgba(46, 204, 113, 0.1)', borderRadius: '8px' }}>
+              <h4 style={{ margin: '0 0 10px 0', color: '#27ae60' }}>Matched Campus Peers:</h4>
+              {matchedPeers.map((peer) => (
+                <div key={peer.id} style={{ padding: '6px 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                  <strong>{peer.author}</strong> — {peer.title} ({peer.contact})
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
       {/* ==========================
-          HOW IT WORKS
+          UNIQUE FEATURE 2: CAMPUS LEADERBOARD
       =========================== */}
-      <section id="how-it-works" className="how-it-works">
-        <h3>How CampusGig Works</h3>
-
-        <div className="steps-grid">
-          <div className="step-card">
-            <span className="step-num">1</span>
-            <h4>Post or Search</h4>
-            <p>
-              List your freelance service or browse tasks posted by fellow
-              students.
-            </p>
-          </div>
-
-          <div className="step-card">
-            <span className="step-num">2</span>
-            <h4>Connect Directly</h4>
-            <p>
-              Chat with peers, discuss requirements, and finalize deadline
-              details.
-            </p>
-          </div>
-
-          <div className="step-card">
-            <span className="step-num">3</span>
-            <h4>Deliver & Earn / Swap</h4>
-            <p>
-              Complete the task, build your campus portfolio, and get paid
-              directly.
-            </p>
+      <section className="container" style={{ margin: '30px auto', padding: '0 20px' }}>
+        <div style={{ background: 'var(--card-bg, #ffffff)', padding: '25px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ margin: '0 0 15px 0', fontSize: '1.3rem' }}>🏆 Top Campus Earners</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '15px' }}>
+            {leaderboard.map((user, idx) => (
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '8px' }}>
+                <div>
+                  <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>#{idx + 1}</span>
+                  <h4 style={{ margin: '2px 0' }}>{user.name} ({user.branch})</h4>
+                  <p style={{ margin: 0, color: '#27ae60', fontWeight: 'bold' }}>Earned: {user.earned}</p>
+                </div>
+                <span style={{ background: '#fef9e7', color: '#b7950b', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                  {user.badge}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* ==========================
-          GIGS
+          GIGS SECTION
       =========================== */}
-      <section id="gigs" className="gigs-container">
-        <h3>Available Campus Gigs</h3>
-
-        <div className="search-box">
-          <input
-            type="text"
-            placeholder="Search by skill, topic, or gig title..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-
-        <div className="filter-buttons">
-          {['All', 'Coding', 'Design', 'Notes'].map((cat) => (
-            <button
-              key={cat}
-              className={selectedCategory === cat ? 'active' : ''}
-              onClick={() => setSelectedCategory(cat)}
-            >
-              {cat}
-            </button>
-          ))}
-
-          <button className="btn-add-inline" onClick={openAddGig}>
+      <section id="gigs" className="container" style={{ padding: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+          <h2>Available Campus Gigs {examMode && '🔥 (Exam Priority)'}</h2>
+          <button className="btn-primary" onClick={openAddGig}>
             + Post New Gig
           </button>
         </div>
 
-        <div className="sort-bar">
-          <label htmlFor="sort-select">Sort by:</label>
+        {/* SEARCH & FILTERS */}
+        <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', flexWrap: 'wrap' }}>
+          <input
+            type="text"
+            placeholder="Search gigs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ flex: 1, minWidth: '220px', padding: '10px 15px', borderRadius: '8px', border: '1px solid #ccc' }}
+          />
 
           <select
-            id="sort-select"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            style={{ padding: '10px 15px', borderRadius: '8px', border: '1px solid #ccc' }}
+          >
+            <option value="All">All Categories</option>
+            <option value="Design">Design</option>
+            <option value="Coding">Coding</option>
+            <option value="Notes">Notes</option>
+          </select>
+
+          <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
+            style={{ padding: '10px 15px', borderRadius: '8px', border: '1px solid #ccc' }}
           >
-            <option value="default">Default</option>
+            <option value="default">Default Sort</option>
             <option value="price-low">Price: Low to High</option>
             <option value="price-high">Price: High to Low</option>
             <option value="urgent">Urgent First</option>
           </select>
         </div>
 
-        {/* GIG CARDS */}
-        <div className="gigs-grid">
-          {sortedGigs.length > 0 ? (
-            sortedGigs.map((gig) => {
-              const isApplied = appliedGigs.includes(gig.id);
-
-              return (
-                <div
-                  key={gig.id}
-                  className={`gig-card ${gig.isUrgent ? 'urgent-border' : ''}`}
-                >
-                  <div className="card-tags">
-                    <span className="badge category">{gig.category}</span>
-
-                    {gig.isUrgent && (
-                      <span className="badge urgent">🔥 URGENT</span>
-                    )}
-
-                    {gig.paymentType === 'Skill Swap' && (
-                      <span className="badge swap">🔄 SKILL SWAP</span>
-                    )}
-                  </div>
-
-                  <h4>{gig.title}</h4>
-
-                  <p className="price">{gig.price}</p>
-
-                  <div className="author-info">
-                    <span
-                      className="author-link"
-                      onClick={() => openProfile(gig)}
-                    >
-                      By {gig.author}
-                      {gig.verified && <b title="Verified Student">✅</b>}
+        {/* GIG GRID */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+          {sortedGigs.map((gig) => (
+            <div
+              key={gig.id}
+              style={{
+                background: 'var(--card-bg, #fff)',
+                padding: '20px',
+                borderRadius: '10px',
+                border: '1px solid rgba(0,0,0,0.1)',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+                display: 'flex',
+                flexDirection: 'column',
+                justify: 'space-between'
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <span style={{ background: '#e8f8f5', color: '#16a34a', padding: '3px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                    {gig.category}
+                  </span>
+                  {gig.isUrgent && (
+                    <span style={{ background: '#fdedec', color: '#e74c3c', padding: '3px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                      🚨 Urgent
                     </span>
-
-                    <span className="rating">{gig.rating}</span>
-                  </div>
-
-                  <div className="card-actions">
-                    <button
-                      className={`btn-apply ${isApplied ? 'applied' : ''}`}
-                      onClick={() => handleApply(gig)}
-                      disabled={isApplied}
-                    >
-                      {isApplied ? '✓ Applied' : 'Apply Now'}
-                    </button>
-
-                    <button className="btn-chat" onClick={() => openChat(gig)}>
-                      💬 Chat
-                    </button>
-                  </div>
-
-                  {isApplied && gig.paymentType === 'Paid' && (
-                    <button
-                      className="btn-upi"
-                      onClick={() => openPayment(gig)}
-                    >
-                      📱 Pay via UPI
-                    </button>
                   )}
                 </div>
-              );
-            })
-          ) : (
-            <p className="no-results">No gigs found matching your search.</p>
-          )}
+
+                <h3 style={{ margin: '0 0 10px 0', fontSize: '1.1rem' }}>{gig.title}</h3>
+                <p style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#27ae60', margin: '0 0 5px 0' }}>{gig.price}</p>
+                <p style={{ fontSize: '0.85rem', opacity: 0.8, margin: '0 0 15px 0' }}>By: {gig.author} {gig.verified && '✅'}</p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  className="btn-primary"
+                  style={{ flex: 1, padding: '8px' }}
+                  onClick={() => handleApply(gig)}
+                >
+                  {appliedGigs.includes(gig.id) ? 'Applied ✅' : 'Apply'}
+                </button>
+                <button
+                  className="btn-secondary"
+                  style={{ padding: '8px 12px' }}
+                  onClick={() => openChat(gig)}
+                >
+                  💬 Chat
+                </button>
+                <button
+                  className="btn-secondary"
+                  style={{ padding: '8px 12px' }}
+                  onClick={() => openProfile(gig)}
+                >
+                  👤
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
-
-      {/* ==========================
-          REVIEWS
-      =========================== */}
-      <section id="reviews" className="reviews-section">
-        <h3>What Students Say</h3>
-
-        <div className="reviews-grid">
-          <div className="review-card">
-            <p>
-              "Found a designer for our college fest poster in under 2 hours.
-              Super helpful platform!"
-            </p>
-            <h5>- Rishabh Mehta (CS, 3rd Year)</h5>
-          </div>
-
-          <div className="review-card">
-            <p>
-              "Earned ₹2,000 in my free time helping juniors with React
-              assignments."
-            </p>
-            <h5>- Sneha Rao (IT, 4th Year)</h5>
-          </div>
-        </div>
-      </section>
-
-      {/* ==========================
-          FAQ
-      =========================== */}
-      <section id="faqs" className="faqs-section">
-        <h3>Frequently Asked Questions</h3>
-
-        <div className="faq-list">
-          <div
-            className={`faq-item ${openFaq === 0 ? 'open' : ''}`}
-            onClick={() => toggleFaq(0)}
-          >
-            <h4>
-              Is CampusGig free for students?
-              <span>{openFaq === 0 ? '▲' : '▼'}</span>
-            </h4>
-
-            {openFaq === 0 && (
-              <p>
-                Yes! CampusGig is completely free to browse, post, and apply for
-                gigs within your campus community.
-              </p>
-            )}
-          </div>
-
-          <div
-            className={`faq-item ${openFaq === 1 ? 'open' : ''}`}
-            onClick={() => toggleFaq(1)}
-          >
-            <h4>
-              How do I get paid for a Gig?
-              <span>{openFaq === 1 ? '▲' : '▼'}</span>
-            </h4>
-
-            {openFaq === 1 && (
-              <p>
-                You connect directly with the gig poster and can receive payment
-                via UPI, cash, or opt for a Skill Swap.
-              </p>
-            )}
-          </div>
-
-          <div
-            className={`faq-item ${openFaq === 2 ? 'open' : ''}`}
-            onClick={() => toggleFaq(2)}
-          >
-            <h4>
-              Who can post a task on the platform?
-              <span>{openFaq === 2 ? '▲' : '▼'}</span>
-            </h4>
-
-            {openFaq === 2 && (
-              <p>
-                Any verified college student can post a task or list their
-                skills to offer services to peers.
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ==========================
-          FOOTER
-      =========================== */}
-      <footer className="footer">
-        <p>
-          © 2026 CampusGig | Peer-to-Peer Marketplace | Built for College
-          Capstone Evaluation
-        </p>
-      </footer>
 
       {/* ==========================
           ADD GIG MODAL
       =========================== */}
       {showAddGig && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h3>Post a New Campus Gig</h3>
-
-            <form onSubmit={handleAddGig}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', padding: '30px', borderRadius: '12px', width: '400px', maxWidth: '90%', color: '#333' }}>
+            <h3 style={{ marginTop: 0 }}>Post a New Campus Gig</h3>
+            <form onSubmit={handleAddGig} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input
                 type="text"
-                placeholder="Gig Title (e.g. Need help with React)"
-                required
+                placeholder="Gig Title"
                 value={newGig.title}
-                onChange={(e) =>
-                  setNewGig({ ...newGig, title: e.target.value })
-                }
+                onChange={(e) => setNewGig({ ...newGig, title: e.target.value })}
+                required
+                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
               />
-
               <select
                 value={newGig.category}
-                onChange={(e) =>
-                  setNewGig({ ...newGig, category: e.target.value })
-                }
+                onChange={(e) => setNewGig({ ...newGig, category: e.target.value })}
+                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
               >
                 <option value="Coding">Coding</option>
                 <option value="Design">Design</option>
                 <option value="Notes">Notes</option>
               </select>
-
               <select
                 value={newGig.paymentType}
-                onChange={(e) =>
-                  setNewGig({ ...newGig, paymentType: e.target.value })
-                }
+                onChange={(e) => setNewGig({ ...newGig, paymentType: e.target.value })}
+                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
               >
-                <option value="Paid">Paid (₹)</option>
-                <option value="Skill Swap">Skill Swap (Barter)</option>
+                <option value="Paid">Paid Task</option>
+                <option value="Skill Swap">Skill Swap 🔄</option>
               </select>
-
               {newGig.paymentType === 'Paid' && (
                 <input
                   type="number"
                   placeholder="Price in ₹"
-                  required
                   value={newGig.price}
-                  onChange={(e) =>
-                    setNewGig({ ...newGig, price: e.target.value })
-                  }
+                  onChange={(e) => setNewGig({ ...newGig, price: e.target.value })}
+                  required
+                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
                 />
               )}
-
-              <input
-                type="text"
-                placeholder="Your Name & Branch (e.g. Saurabh (CS))"
-                required
-                value={newGig.author}
-                onChange={(e) =>
-                  setNewGig({ ...newGig, author: e.target.value })
-                }
-              />
-
-              <input
-                type="email"
-                placeholder="Contact Email"
-                required
-                value={newGig.contact}
-                onChange={(e) =>
-                  setNewGig({ ...newGig, contact: e.target.value })
-                }
-              />
-
-              <label className="checkbox-label">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <input
                   type="checkbox"
                   checked={newGig.isUrgent}
-                  onChange={(e) =>
-                    setNewGig({ ...newGig, isUrgent: e.target.checked })
-                  }
-                />
-                Mark as 🔥 Urgent (24h Deadline)
+                  onChange={(e) => setNewGig({ ...newGig, isUrgent: e.target.checked })}
+                /> Mark as Urgent 🚨
               </label>
-
-              <div className="modal-actions">
-                <button type="submit" className="btn-primary">
-                  Post Gig
-                </button>
-
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowAddGig(false)}
-                >
-                  Cancel
-                </button>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>Post Gig</button>
+                <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowAddGig(false)}>Cancel</button>
               </div>
             </form>
           </div>
@@ -1145,312 +1065,112 @@ function App() {
       )}
 
       {/* ==========================
-          AUTH MODAL (REAL LOGIN)
+          AUTH MODAL
       =========================== */}
       {showAuthModal && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h3>{authType} to CampusGig</h3>
-
-            <form onSubmit={handleAuthSubmit}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', padding: '30px', borderRadius: '12px', width: '380px', maxWidth: '90%', color: '#333' }}>
+            <h3 style={{ marginTop: 0 }}>{authType} to CampusGig</h3>
+            {authError && <p style={{ color: '#e74c3c', fontSize: '0.85rem' }}>{authError}</p>}
+            <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {authType === 'Sign Up' && (
                 <input
                   type="text"
                   placeholder="Full Name"
-                  required
                   value={authForm.name}
-                  onChange={(e) =>
-                    setAuthForm({ ...authForm, name: e.target.value })
-                  }
+                  onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                  required
+                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
                 />
               )}
-
               <input
                 type="email"
                 placeholder="College Email (.edu / .ac.in)"
-                required
                 value={authForm.email}
-                onChange={(e) =>
-                  setAuthForm({ ...authForm, email: e.target.value })
-                }
+                onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                required
+                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
               />
-
               <input
                 type="password"
-                placeholder="Password (min 6 characters)"
-                required
-                minLength={6}
+                placeholder="Password"
                 value={authForm.password}
-                onChange={(e) =>
-                  setAuthForm({ ...authForm, password: e.target.value })
-                }
+                onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                required
+                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
               />
-
-              {authError && (
-                <p style={{ color: '#ff6b6b', fontSize: '14px' }}>
-                  {authError}
-                </p>
-              )}
-
+              <button type="submit" className="btn-primary" disabled={authLoading}>
+                {authLoading ? 'Please wait...' : authType}
+              </button>
               {authType === 'Login' && (
-                <p
-                  style={{ cursor: 'pointer', fontSize: '13px' }}
-                  onClick={handleForgotPassword}
-                >
-                  Forgot password?
-                </p>
+                <button type="button" onClick={handleForgotPassword} style={{ background: 'none', border: 'none', color: '#27ae60', cursor: 'pointer', fontSize: '0.85rem' }}>
+                  Forgot Password?
+                </button>
               )}
-
-              <div className="modal-actions">
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={authLoading}
-                >
-                  {authLoading ? 'Please wait...' : authType}
-                </button>
-
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={closeAuth}
-                >
-                  Close
-                </button>
-              </div>
-
-              <p
-                style={{
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  textAlign: 'center'
-                }}
-                onClick={() => {
-                  setAuthType(authType === 'Login' ? 'Sign Up' : 'Login');
-                  setAuthError('');
-                }}
-              >
-                {authType === 'Login'
-                  ? 'Account nahi hai? Sign Up karo'
-                  : 'Already account hai? Login karo'}
-              </p>
+              <button type="button" className="btn-secondary" onClick={closeAuth}>Cancel</button>
             </form>
           </div>
         </div>
       )}
 
       {/* ==========================
-          REAL FIREBASE CHAT MODAL
+          REAL-TIME CHAT MODAL
       =========================== */}
       {chatOpenFor && (
-        <div className="modal-overlay" onClick={closeChat}>
-          <div
-            className="modal chat-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="chat-header">
-              <div>
-                <h3>💬 Chat</h3>
-                <p className="chat-gig-title">{chatOpenFor.title}</p>
-              </div>
-
-              <button className="btn-close-icon" onClick={closeChat}>
-                ✕
-              </button>
-            </div>
-
-            <div className="chat-messages">
-              {chatLoading && (
-                <p className="chat-loading">Loading messages...</p>
-              )}
-
-              {!chatLoading && chatMessages.length === 0 && (
-                <div className="chat-empty">
-                  <div>💬</div>
-                  <p>No messages yet.</p>
-                  <span>Start the conversation!</span>
-                </div>
-              )}
-
-              {chatMessages.map((message) => {
-                const isMine = message.senderId === firebaseUser?.uid;
-
-                const messageTime = message.createdAt?.toDate
-                  ? message.createdAt.toDate().toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })
-                  : '...';
-
-                return (
-                  <div
-                    key={message.id}
-                    className={`chat-bubble ${isMine ? 'me' : 'them'}`}
-                  >
-                    {!isMine && (
-                      <small className="chat-sender">
-                        {message.senderName || 'Student'}
-                      </small>
-                    )}
-
-                    <p>{message.text}</p>
-
-                    <span className="chat-time">{messageTime}</span>
-                  </div>
-                );
-              })}
-            </div>
-
-            <form className="chat-input-row" onSubmit={handleSendMessage}>
-              <input
-                type="text"
-                placeholder={
-                  firebaseReady ? 'Type a message...' : 'Connecting...'
-                }
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                disabled={!firebaseReady}
-              />
-
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={
-                  !firebaseReady || !firebaseUser || !chatInput.trim()
-                }
-              >
-                Send
-              </button>
-            </form>
+        <div style={{ position: 'fixed', bottom: '20px', right: '20px', width: '340px', background: '#fff', borderRadius: '12px', boxShadow: '0 5px 25px rgba(0,0,0,0.2)', color: '#333', zIndex: 1000, overflow: 'hidden' }}>
+          <div style={{ background: '#2196f3', color: '#fff', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h4 style={{ margin: 0 }}>Chat: {chatOpenFor.title}</h4>
+            <button onClick={closeChat} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
           </div>
+          <div style={{ height: '250px', padding: '15px', overflowY: 'auto', background: '#f9f9f9', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {chatLoading ? (
+              <p>Loading chat...</p>
+            ) : chatMessages.length === 0 ? (
+              <p style={{ fontSize: '0.85rem', color: '#888' }}>No messages yet. Say hi!</p>
+            ) : (
+              chatMessages.map((msg) => (
+                <div key={msg.id} style={{ alignSelf: msg.senderId === firebaseUser?.uid ? 'flex-end' : 'flex-start', background: msg.senderId === firebaseUser?.uid ? '#2196f3' : '#e0e0e0', color: msg.senderId === firebaseUser?.uid ? '#fff' : '#333', padding: '6px 12px', borderRadius: '12px', fontSize: '0.85rem', maxWidth: '80%' }}>
+                  <strong>{msg.senderName}: </strong>{msg.text}
+                </div>
+              ))
+            )}
+          </div>
+          <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '10px', borderTop: '1px solid #eee' }}>
+            <input
+              type="text"
+              placeholder="Type a message..."
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ccc', marginRight: '5px' }}
+            />
+            <button type="submit" className="btn-primary" style={{ padding: '8px 12px' }}>Send</button>
+          </form>
         </div>
       )}
 
       {/* ==========================
           PROFILE MODAL
       =========================== */}
-      {profileOpenFor &&
-        (() => {
-          const profile = getProfileData(profileOpenFor);
+      {profileOpenFor && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', padding: '25px', borderRadius: '12px', width: '380px', maxWidth: '90%', color: '#333' }}>
+            {(() => {
+              const profile = getProfileData(profileOpenFor);
+              return (
+                <>
+                  <h3 style={{ marginTop: 0 }}>👤 {profile.name} {profile.branch}</h3>
+                  <p><strong>Rating:</strong> {profile.rating}</p>
+                  <p><strong>Gigs Completed:</strong> {profile.completedGigs}</p>
+                  <p><strong>Skills:</strong> {profile.skills.join(', ')}</p>
+                  <p style={{ fontSize: '0.9rem', color: '#555' }}>{profile.bio}</p>
+                  <button className="btn-secondary" style={{ width: '100%', marginTop: '15px' }} onClick={closeProfile}>Close Profile</button>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
-          const initials = profile.name
-            .split(' ')
-            .map((w) => w[0])
-            .join('')
-            .slice(0, 2)
-            .toUpperCase();
-
-          return (
-            <div className="modal-overlay" onClick={closeProfile}>
-              <div
-                className="modal profile-modal"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button className="btn-close-icon" onClick={closeProfile}>
-                  ✕
-                </button>
-
-                <div className="profile-avatar">{initials}</div>
-
-                <h3>{profile.name}</h3>
-
-                <p className="profile-branch">{profile.branch}</p>
-
-                <p className="profile-rating">
-                  ⭐ {profile.rating} · {profile.completedGigs} gigs completed
-                </p>
-
-                <div className="profile-skills">
-                  {profile.skills.map((s) => (
-                    <span key={s} className="badge category">
-                      {s}
-                    </span>
-                  ))}
-                </div>
-
-                <p className="profile-bio">{profile.bio}</p>
-              </div>
-            </div>
-          );
-        })()}
-
-      {/* ==========================
-          PAYMENT MODAL
-      =========================== */}
-      {paymentOpenFor &&
-        (() => {
-          const amountDigits = paymentOpenFor.price.match(/\d+/g);
-          const amount = amountDigits ? amountDigits.join('') : '0';
-
-          const upiId = 'giripawan470@okicici';
-          const merchantName = 'CampusGig';
-
-          const upiLink =
-            `upi://pay?pa=${encodeURIComponent(upiId)}` +
-            `&pn=${encodeURIComponent(merchantName)}` +
-            `&am=${encodeURIComponent(amount)}` +
-            `&cu=INR`;
-
-          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-            upiLink
-          )}`;
-
-          return (
-            <div className="modal-overlay" onClick={closePayment}>
-              <div
-                className="modal payment-modal"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <h3>Pay via UPI</h3>
-
-                <p className="pay-amount">₹{amount}</p>
-
-                {paymentStatus === 'success' ? (
-                  <div className="pay-success">
-                    <p>✅ Payment Successful!</p>
-                    <p className="pay-sub">
-                      Payment completed for "{paymentOpenFor.title}"
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <img
-                      className="upi-qr"
-                      src={qrUrl}
-                      alt="UPI Payment QR Code"
-                    />
-
-                    <p className="upi-id">
-                      UPI ID: <b>{upiId}</b>
-                    </p>
-
-                    <p className="scan-text">
-                      Scan this QR code using Google Pay, PhonePe or Paytm
-                    </p>
-
-                    <button
-                      className="btn-primary"
-                      disabled={paymentStatus === 'processing'}
-                      onClick={simulatePayment}
-                    >
-                      {paymentStatus === 'processing'
-                        ? 'Processing...'
-                        : 'Simulate Payment'}
-                    </button>
-                  </>
-                )}
-
-                <button
-                  className="btn-close"
-                  onClick={closePayment}
-                  disabled={paymentStatus === 'processing'}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          );
-        })()}
     </div>
   );
 }
