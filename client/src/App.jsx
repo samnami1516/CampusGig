@@ -33,7 +33,6 @@ const currentTime = () =>
     minute: '2-digit'
   });
 
-// CampusGig logo icon (inline SVG)
 const LogoIcon = ({ size = 40 }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -102,9 +101,6 @@ const LogoIcon = ({ size = 40 }) => (
 );
 
 function App() {
-  // ==============================
-  // UI STATE
-  // ==============================
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortBy, setSortBy] = useState('default');
@@ -114,15 +110,12 @@ function App() {
   const [authType, setAuthType] = useState('Login');
   const [openFaq, setOpenFaq] = useState(null);
 
-  // NEW FEATURES STATE
+  // New Features State
   const [examMode, setExamMode] = useState(false);
   const [skillSwapOffer, setSkillSwapOffer] = useState('');
   const [skillSwapWant, setSkillSwapWant] = useState('');
   const [matchedPeers, setMatchedPeers] = useState([]);
 
-  // ==============================
-  // THEME
-  // ==============================
   const [theme, setTheme] = useState(
     () => localStorage.getItem('campusgig-theme') || 'dark'
   );
@@ -136,9 +129,6 @@ function App() {
     setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
   };
 
-  // ==============================
-  // FIREBASE AUTH (REAL LOGIN)
-  // ==============================
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [firebaseReady, setFirebaseReady] = useState(false);
   const [nameOverride, setNameOverride] = useState('');
@@ -210,9 +200,6 @@ function App() {
     return true;
   };
 
-  // ==============================
-  // NOTIFICATIONS
-  // ==============================
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -240,24 +227,16 @@ function App() {
     setNotifications([]);
   };
 
-  // ==============================
-  // APPLY / CHAT / PROFILE / PAYMENT STATE
-  // ==============================
   const [appliedGigs, setAppliedGigs] = useState([]);
-
   const [chatOpenFor, setChatOpenFor] = useState(null);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
 
   const [profileOpenFor, setProfileOpenFor] = useState(null);
-
   const [paymentOpenFor, setPaymentOpenFor] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState('idle');
 
-  // ==============================
-  // AUTH HANDLERS
-  // ==============================
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
     setAuthError('');
@@ -321,9 +300,6 @@ function App() {
     setProfileOpenFor(null);
   };
 
-  // ==============================
-  // INITIAL GIGS & FIRESTORE REALTIME SYNC
-  // ==============================
   const defaultGigs = [
     {
       id: 1,
@@ -392,7 +368,6 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  // LEADERBOARD DATA
   const leaderboard = [
     { name: 'Saurabh Giri', branch: 'CS', earned: '₹12,500', badge: 'Top Designer 🏆' },
     { name: 'Ritika Singh', branch: 'IT', earned: '₹9,800', badge: 'Fast Delivery ⚡' },
@@ -410,9 +385,6 @@ function App() {
     setMatchedPeers(matches);
   };
 
-  // ==============================
-  // NEW GIG FORM
-  // ==============================
   const [newGig, setNewGig] = useState({
     title: '',
     category: 'Coding',
@@ -433,9 +405,6 @@ function App() {
     setShowAddGig(true);
   };
 
-  // ==============================
-  // ADD GIG (Saves to State + Firestore)
-  // ==============================
   const handleAddGig = async (e) => {
     e.preventDefault();
 
@@ -477,31 +446,16 @@ function App() {
     });
   };
 
-  // ==============================
-  // APPLY
-  // ==============================
   const handleApply = (gig) => {
     if (!requireLogin()) return;
-
-    if (appliedGigs.includes(gig.id)) {
-      return;
-    }
+    if (appliedGigs.includes(gig.id)) return;
 
     setAppliedGigs((prev) => [...prev, gig.id]);
-
-    addNotification(
-      `You applied to "${gig.title}". ${gig.author
-        .split('(')[0]
-        .trim()} has been notified.`
-    );
+    addNotification(`You applied to "${gig.title}".`);
   };
 
-  // ==============================
-  // CHAT OPEN / CLOSE
-  // ==============================
   const openChat = (gig) => {
     if (!requireLogin()) return;
-
     setChatOpenFor(gig);
     setChatInput('');
     setChatMessages([]);
@@ -513,23 +467,12 @@ function App() {
     setChatMessages([]);
   };
 
-  // ==============================
-  // FIREBASE REAL-TIME CHAT
-  // ==============================
   const currentUid = firebaseUser?.uid;
 
   useEffect(() => {
-    if (!chatOpenFor || !currentUid) {
-      return;
-    }
+    if (!chatOpenFor || !currentUid) return;
 
-    const messagesRef = collection(
-      db,
-      'chats',
-      String(chatOpenFor.id),
-      'messages'
-    );
-
+    const messagesRef = collection(db, 'chats', String(chatOpenFor.id), 'messages');
     const messagesQuery = query(messagesRef, orderBy('createdAt', 'asc'));
 
     setChatLoading(true);
@@ -541,7 +484,6 @@ function App() {
           id: d.id,
           ...d.data()
         }));
-
         setChatMessages(messages);
         setChatLoading(false);
       },
@@ -554,46 +496,26 @@ function App() {
     return () => unsubscribe();
   }, [chatOpenFor, currentUid]);
 
-  // ==============================
-  // SEND REAL MESSAGE
-  // ==============================
   const handleSendMessage = async (e) => {
     e.preventDefault();
-
-    if (!chatInput.trim() || !chatOpenFor || !firebaseUser) {
-      return;
-    }
+    if (!chatInput.trim() || !chatOpenFor || !firebaseUser) return;
 
     const messageText = chatInput.trim();
 
     try {
-      const messagesRef = collection(
-        db,
-        'chats',
-        String(chatOpenFor.id),
-        'messages'
-      );
-
+      const messagesRef = collection(db, 'chats', String(chatOpenFor.id), 'messages');
       await addDoc(messagesRef, {
         text: messageText,
         senderId: firebaseUser.uid,
         senderName: displayName,
         createdAt: serverTimestamp()
       });
-
       setChatInput('');
     } catch (error) {
       console.error('Message send failed:', error);
-
-      alert(
-        'Message send nahi hua. Firebase Rules aur Authentication check karo.'
-      );
     }
   };
 
-  // ==============================
-  // PROFILE
-  // ==============================
   const openProfile = (gig) => {
     setProfileOpenFor(gig);
   };
@@ -604,7 +526,6 @@ function App() {
 
   const getProfileData = (gig) => {
     const [namePart, branchPart] = gig.author.split('(');
-
     const name = namePart.trim();
     const branch = branchPart ? `(${branchPart.trim()}` : '';
     const skills = CATEGORY_SKILLS[gig.category] || ['Freelancing'];
@@ -616,16 +537,12 @@ function App() {
       skills,
       completedGigs,
       rating: gig.rating,
-      bio: `${name} is a verified CampusGig freelancer specializing in ${gig.category}. Known for reliable, on-time delivery and clear communication with peers.`
+      bio: `${name} is a verified CampusGig freelancer specializing in ${gig.category}. Known for reliable delivery.`
     };
   };
 
-  // ==============================
-  // PAYMENT
-  // ==============================
   const openPayment = (gig) => {
     if (!requireLogin()) return;
-
     setPaymentOpenFor(gig);
     setPaymentStatus('idle');
   };
@@ -639,35 +556,19 @@ function App() {
 
   const simulatePayment = () => {
     setPaymentStatus('processing');
-
     setTimeout(() => {
       setPaymentStatus('success');
-
-      addNotification(
-        `Payment of ${paymentOpenFor.price} sent for "${paymentOpenFor.title}".`
-      );
+      addNotification(`Payment of ${paymentOpenFor.price} sent for "${paymentOpenFor.title}".`);
     }, 1500);
   };
 
-  // ==============================
-  // FILTER
-  // ==============================
   const filteredGigs = gigs.filter((gig) => {
-    const matchesCategory =
-      selectedCategory === 'All' || gig.category === selectedCategory;
-
-    const matchesSearch = gig.title
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-
+    const matchesCategory = selectedCategory === 'All' || gig.category === selectedCategory;
+    const matchesSearch = gig.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesExamMode = !examMode || gig.category === 'Notes' || gig.isUrgent;
-
     return matchesCategory && matchesSearch && matchesExamMode;
   });
 
-  // ==============================
-  // PRICE SORT
-  // ==============================
   const getPriceValue = (gig) => {
     const match = gig.price.match(/\d+/g);
     return match ? parseInt(match.join(''), 10) : null;
@@ -677,45 +578,28 @@ function App() {
     if (sortBy === 'price-low' || sortBy === 'price-high') {
       const pa = getPriceValue(a);
       const pb = getPriceValue(b);
-
       if (pa === null && pb === null) return 0;
       if (pa === null) return 1;
       if (pb === null) return -1;
-
       return sortBy === 'price-low' ? pa - pb : pb - pa;
     }
-
     if (sortBy === 'urgent') {
       return (b.isUrgent === true) - (a.isUrgent === true);
     }
-
     return 0;
   });
 
-  // ==============================
-  // FAQ
-  // ==============================
   const toggleFaq = (index) => {
     setOpenFaq(openFaq === index ? null : index);
   };
 
-  // ==============================
-  // RETURN
-  // ==============================
   return (
     <div className="app">
-      {/* ==========================
-          NAVBAR
-      =========================== */}
+      {/* NAVBAR */}
       <header className="navbar">
-        <h1
-          className="logo"
-          style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
-        >
+        <h1 className="logo" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <LogoIcon size={40} />
-          <span style={{ color: 'inherit' }}>
-            Campus<span>Gig</span>
-          </span>
+          <span>Campus<span>Gig</span></span>
         </h1>
 
         <div className="nav-right">
@@ -728,7 +612,6 @@ function App() {
           </div>
 
           <div className="nav-actions">
-            {/* EXAM MODE BUTTON */}
             <button
               className="btn-secondary"
               onClick={() => setExamMode(!examMode)}
@@ -741,45 +624,27 @@ function App() {
               {examMode ? '📚 Exam Mode ON' : '🎓 Normal Mode'}
             </button>
 
-            <button
-              className="icon-btn theme-toggle"
-              onClick={toggleTheme}
-              title="Toggle theme"
-            >
+            <button className="icon-btn theme-toggle" onClick={toggleTheme} title="Toggle theme">
               {theme === 'dark' ? '☀️' : '🌙'}
             </button>
 
             <div className="notif-wrapper">
-              <button
-                className="icon-btn notif-bell"
-                onClick={() => setShowNotifications((s) => !s)}
-                title="Notifications"
-              >
+              <button className="icon-btn notif-bell" onClick={() => setShowNotifications((s) => !s)} title="Notifications">
                 🔔
-                {unreadCount > 0 && (
-                  <span className="notif-badge">{unreadCount}</span>
-                )}
+                {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
               </button>
 
               {showNotifications && (
                 <div className="notif-dropdown">
                   <div className="notif-header">
                     <h4>Notifications</h4>
-
-                    {notifications.length > 0 && (
-                      <button onClick={clearNotifications}>Clear all</button>
-                    )}
+                    {notifications.length > 0 && <button onClick={clearNotifications}>Clear all</button>}
                   </div>
-
                   {notifications.length === 0 ? (
                     <p className="notif-empty">No notifications yet</p>
                   ) : (
                     notifications.map((n) => (
-                      <div
-                        key={n.id}
-                        className={`notif-item ${n.read ? '' : 'unread'}`}
-                        onClick={() => markRead(n.id)}
-                      >
+                      <div key={n.id} className={`notif-item ${n.read ? '' : 'unread'}`} onClick={() => markRead(n.id)}>
                         <p>{n.text}</p>
                         <span className="notif-time">{n.time}</span>
                       </div>
@@ -792,57 +657,29 @@ function App() {
             {firebaseUser ? (
               <>
                 <span className="user-name">👤 {displayName}</span>
-                <button className="btn-secondary" onClick={handleLogout}>
-                  Logout
-                </button>
+                <button className="btn-secondary" onClick={handleLogout}>Logout</button>
               </>
             ) : (
               <>
-                <button
-                  className="btn-secondary"
-                  onClick={() => openAuth('Login')}
-                >
-                  Login
-                </button>
-
-                <button
-                  className="btn-primary"
-                  onClick={() => openAuth('Sign Up')}
-                >
-                  Join CampusGig
-                </button>
+                <button className="btn-secondary" onClick={() => openAuth('Login')}>Login</button>
+                <button className="btn-primary" onClick={() => openAuth('Sign Up')}>Join CampusGig</button>
               </>
             )}
           </div>
         </div>
       </header>
 
-      {/* ==========================
-          HERO
-      =========================== */}
+      {/* HERO SECTION */}
       <section id="home" className="hero">
-        <h2>
-          Turn Your <span>Skills</span> Into Opportunities
-        </h2>
-
-        <p>
-          CampusGig connects talented college students with peers for freelance
-          campus tasks.
-        </p>
-
+        <h2>Turn Your <span>Skills</span> Into Opportunities</h2>
+        <p>CampusGig connects talented college students with peers for freelance campus tasks.</p>
         <div className="hero-buttons" style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
-          <a href="#gigs" className="btn-primary">
-            Explore Gigs
-          </a>
-          <button className="btn-secondary" onClick={openAddGig}>
-            💼 Post a Gig
-          </button>
+          <a href="#gigs" className="btn-primary">Explore Gigs</a>
+          <button className="btn-secondary" onClick={openAddGig}>💼 Post a Gig</button>
         </div>
       </section>
 
-      {/* ==========================
-          UNIQUE FEATURE 1: SKILL SWAP MATCHER
-      =========================== */}
+      {/* UNIQUE FEATURE: SKILL SWAP MATCHER */}
       <section className="container" style={{ margin: '30px auto', padding: '0 20px' }}>
         <div style={{ background: 'var(--card-bg, #ffffff)', padding: '25px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
           <h3 style={{ margin: '0 0 15px 0', fontSize: '1.3rem' }}>🔄 Skill Swap Matcher</h3>
@@ -877,9 +714,7 @@ function App() {
         </div>
       </section>
 
-      {/* ==========================
-          UNIQUE FEATURE 2: CAMPUS LEADERBOARD
-      =========================== */}
+      {/* UNIQUE FEATURE: CAMPUS LEADERBOARD */}
       <section className="container" style={{ margin: '30px auto', padding: '0 20px' }}>
         <div style={{ background: 'var(--card-bg, #ffffff)', padding: '25px', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
           <h3 style={{ margin: '0 0 15px 0', fontSize: '1.3rem' }}>🏆 Top Campus Earners</h3>
@@ -900,18 +735,32 @@ function App() {
         </div>
       </section>
 
-      {/* ==========================
-          GIGS SECTION
-      =========================== */}
+      {/* HOW IT WORKS SECTION */}
+      <section id="how-it-works" className="container" style={{ padding: '40px 20px', textAlign: 'center' }}>
+        <h2>How CampusGig Works</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '20px' }}>
+          <div style={{ padding: '20px', background: 'var(--card-bg, #fff)', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }}>
+            <h3>1. Sign Up</h3>
+            <p>Verify your college `.edu` or `.ac.in` email id securely[cite: 3].</p>
+          </div>
+          <div style={{ padding: '20px', background: 'var(--card-bg, #fff)', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }}>
+            <h3>2. Post or Browse</h3>
+            <p>Find coding, design, or notes tasks posted by fellow students[cite: 1].</p>
+          </div>
+          <div style={{ padding: '20px', background: 'var(--card-bg, #fff)', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }}>
+            <h3>3. Earn & Grow</h3>
+            <p>Complete tasks securely with escrow payment simulation and build your portfolio[cite: 1, 8].</p>
+          </div>
+        </div>
+      </section>
+
+      {/* GIGS SECTION */}
       <section id="gigs" className="container" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
           <h2>Available Campus Gigs {examMode && '🔥 (Exam Priority)'}</h2>
-          <button className="btn-primary" onClick={openAddGig}>
-            + Post New Gig
-          </button>
+          <button className="btn-primary" onClick={openAddGig}>+ Post New Gig</button>
         </div>
 
-        {/* SEARCH & FILTERS */}
         <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', flexWrap: 'wrap' }}>
           <input
             type="text"
@@ -944,7 +793,6 @@ function App() {
           </select>
         </div>
 
-        {/* GIG GRID */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
           {sortedGigs.map((gig) => (
             <div
@@ -957,7 +805,7 @@ function App() {
                 boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
                 display: 'flex',
                 flexDirection: 'column',
-                justify: 'space-between'
+                justifyContent: 'space-between'
               }}
             >
               <div>
@@ -977,7 +825,7 @@ function App() {
                 <p style={{ fontSize: '0.85rem', opacity: 0.8, margin: '0 0 15px 0' }}>By: {gig.author} {gig.verified && '✅'}</p>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
                   className="btn-primary"
                   style={{ flex: 1, padding: '8px' }}
@@ -987,14 +835,21 @@ function App() {
                 </button>
                 <button
                   className="btn-secondary"
-                  style={{ padding: '8px 12px' }}
+                  style={{ padding: '8px 10px' }}
+                  onClick={() => openPayment(gig)}
+                >
+                  💳 Pay
+                </button>
+                <button
+                  className="btn-secondary"
+                  style={{ padding: '8px 10px' }}
                   onClick={() => openChat(gig)}
                 >
                   💬 Chat
                 </button>
                 <button
                   className="btn-secondary"
-                  style={{ padding: '8px 12px' }}
+                  style={{ padding: '8px 10px' }}
                   onClick={() => openProfile(gig)}
                 >
                   👤
@@ -1005,9 +860,39 @@ function App() {
         </div>
       </section>
 
-      {/* ==========================
-          ADD GIG MODAL
-      =========================== */}
+      {/* REVIEWS SECTION */}
+      <section id="reviews" className="container" style={{ padding: '40px 20px' }}>
+        <h2>Student Reviews & Testimonials</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '20px' }}>
+          <div style={{ padding: '20px', background: 'var(--card-bg, #fff)', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }}>
+            <p>“CampusGig helped me earn Rs.2000 during exam week by sharing my handwritten notes and debugging code for juniors[cite: 1]!”</p>
+            <strong>- Rahul Sharma (CS Dept)</strong>
+          </div>
+          <div style={{ padding: '20px', background: 'var(--card-bg, #fff)', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)' }}>
+            <p>“The escrow payment simulation and skill swap feature make it super safe and trustworthy for college students[cite: 8].”</p>
+            <strong>- Priya Nair (IT Dept)</strong>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQS SECTION */}
+      <section id="faqs" className="container" style={{ padding: '40px 20px' }}>
+        <h2>Frequently Asked Questions</h2>
+        <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {[
+            { q: 'Who can register on CampusGig?', a: 'Only students with verified college domain emails (.edu or .ac.in) can sign up[cite: 3].' },
+            { q: 'How does Skill Swap work?', a: 'You can exchange skills with peers without monetary transactions (e.g., teaching React in exchange for Figma lessons)[cite: 8].' },
+            { q: 'Are payments secure?', a: 'Yes, payments use an escrow-style simulation flow where funds release upon task approval[cite: 8].' }
+          ].map((faq, index) => (
+            <div key={index} style={{ background: 'var(--card-bg, #fff)', padding: '15px', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)', cursor: 'pointer' }} onClick={() => toggleFaq(index)}>
+              <h4 style={{ margin: 0 }}>{faq.q}</h4>
+              {openFaq === index && <p style={{ marginTop: '10px', fontSize: '0.9rem', opacity: 0.9 }}>{faq.a}</p>}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ADD GIG MODAL */}
       {showAddGig && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '30px', borderRadius: '12px', width: '400px', maxWidth: '90%', color: '#333' }}>
@@ -1064,9 +949,7 @@ function App() {
         </div>
       )}
 
-      {/* ==========================
-          AUTH MODAL
-      =========================== */}
+      {/* AUTH MODAL */}
       {showAuthModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '30px', borderRadius: '12px', width: '380px', maxWidth: '90%', color: '#333' }}>
@@ -1113,9 +996,32 @@ function App() {
         </div>
       )}
 
-      {/* ==========================
-          REAL-TIME CHAT MODAL
-      =========================== */}
+      {/* PAYMENT MODAL */}
+      {paymentOpenFor && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', padding: '30px', borderRadius: '12px', width: '360px', maxWidth: '90%', color: '#333', textAlign: 'center' }}>
+            <h3 style={{ marginTop: 0 }}>Escrow Payment Simulator</h3>
+            <p>Task: <strong>{paymentOpenFor.title}</strong></p>
+            <p style={{ fontSize: '1.2rem', color: '#27ae60', fontWeight: 'bold' }}>Amount: {paymentOpenFor.price}</p>
+
+            {paymentStatus === 'idle' && (
+              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                <button className="btn-primary" style={{ flex: 1 }} onClick={simulatePayment}>Simulate Payment</button>
+                <button className="btn-secondary" style={{ flex: 1 }} onClick={closePayment}>Cancel</button>
+              </div>
+            )}
+            {paymentStatus === 'processing' && <p style={{ marginTop: '15px' }}>Processing secure payment...</p>}
+            {paymentStatus === 'success' && (
+              <div style={{ marginTop: '15px' }}>
+                <p style={{ color: '#27ae60', fontWeight: 'bold' }}>Payment Successful! Funds held in escrow. ✅</p>
+                <button className="btn-primary" style={{ width: '100%', marginTop: '10px' }} onClick={closePayment}>Close</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* REAL-TIME CHAT MODAL */}
       {chatOpenFor && (
         <div style={{ position: 'fixed', bottom: '20px', right: '20px', width: '340px', background: '#fff', borderRadius: '12px', boxShadow: '0 5px 25px rgba(0,0,0,0.2)', color: '#333', zIndex: 1000, overflow: 'hidden' }}>
           <div style={{ background: '#2196f3', color: '#fff', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1148,9 +1054,7 @@ function App() {
         </div>
       )}
 
-      {/* ==========================
-          PROFILE MODAL
-      =========================== */}
+      {/* PROFILE MODAL */}
       {profileOpenFor && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '25px', borderRadius: '12px', width: '380px', maxWidth: '90%', color: '#333' }}>
