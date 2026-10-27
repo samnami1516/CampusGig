@@ -5,46 +5,35 @@ import {
   addDoc,
   onSnapshot,
   query,
-  orderBy,
-  serverTimestamp
+  orderBy
 } from 'firebase/firestore';
-import { db, auth } from './firebase';
-
-const CATEGORY_SKILLS = {
-  Design: ['UI/UX Design', 'Figma', 'Canva'],
-  Coding: ['React', 'JavaScript', 'Python'],
-  Notes: ['Technical Writing', 'Research']
-};
+import { db } from './firebase';
 
 function App() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [sortBy, setSortBy] = useState('default');
-
   const [showAddGig, setShowAddGig] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authType, setAuthType] = useState('login');
-  const [openFaq, setOpenFaq] = useState(null);
-
-  // Firestore Gigs State
-  const [gigs, setGigs] = useState([]);
-  const [loadingGigs, setLoadingGigs] = useState(true);
-
-  // Features State
   const [examMode, setExamMode] = useState(false);
   const [skillSwapOffer, setSkillSwapOffer] = useState('');
   const [skillSwapWant, setSkillSwapWant] = useState('');
   const [matchedPeers, setMatchedPeers] = useState([]);
+  const [theme, setTheme] = useState('light');
 
-  // Theme
-  const [theme, setTheme] = useState(() => localStorage.getItem('campusgig-theme') || 'dark');
+  // New Gig Form State
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('Design');
+  const [price, setPrice] = useState('');
+  const [contact, setContact] = useState('');
+  const [isUrgent, setIsUrgent] = useState(false);
+
+  const [gigs, setGigs] = useState([]);
+  const [loadingGigs, setLoadingGigs] = useState(true);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('campusgig-theme', theme);
   }, [theme]);
 
-  // 1. FIRESTORE REALTIME GIGS FETCHING
+  // Firestore Gigs Fetching
   useEffect(() => {
     const q = query(collection(db, 'gigs'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -55,19 +44,39 @@ function App() {
       setGigs(fetchedGigs);
       setLoadingGigs(false);
     }, (error) => {
-      console.error("Firestore Fetch Error:", error);
+      console.error("Firestore Error:", error);
       setLoadingGigs(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  // 2. SKILL SWAP MATCHER LOGIC
+  const handleAddGig = async (e) => {
+    e.preventDefault();
+    if (!title || !price || !contact) return;
+
+    try {
+      await addDoc(collection(db, 'gigs'), {
+        title,
+        category,
+        price,
+        contact,
+        isUrgent,
+        author: 'Saurabh Giri',
+        createdAt: new Date()
+      });
+      setTitle('');
+      setPrice('');
+      setContact('');
+      setShowAddGig(false);
+    } catch (err) {
+      console.error("Error adding gig: ", err);
+    }
+  };
+
   const handleSkillMatch = (e) => {
     e.preventDefault();
     if (!skillSwapOffer || !skillSwapWant) return;
-
-    // Filter peers offering what you want
     const matches = gigs.filter(gig =>
       gig.title.toLowerCase().includes(skillSwapWant.toLowerCase()) ||
       gig.category.toLowerCase().includes(skillSwapWant.toLowerCase())
@@ -75,7 +84,6 @@ function App() {
     setMatchedPeers(matches);
   };
 
-  // 3. LEADERBOARD DATA (Dynamic Extraction from Gigs)
   const leaderboard = [
     { name: 'Saurabh Giri', branch: 'CS', earned: '₹12,500', badge: 'Top Designer 🏆' },
     { name: 'Ritika Singh', branch: 'IT', earned: '₹9,800', badge: 'Fast Delivery ⚡' },
@@ -95,14 +103,12 @@ function App() {
           <button className="theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
             {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
           </button>
-
           <button
             className={`exam-btn ${examMode ? 'active' : ''}`}
             onClick={() => setExamMode(!examMode)}
           >
             {examMode ? '📚 Exam Mode ON' : '🎓 Normal Mode'}
           </button>
-
           <button className="btn-primary" onClick={() => setShowAuthModal(true)}>
             Login / Join
           </button>
@@ -115,7 +121,7 @@ function App() {
         <p>CampusGig connects college students with peers for freelance campus tasks.</p>
       </section>
 
-      {/* FEATURE 1: SKILL SWAP MATCHER */}
+      {/* SKILL SWAP MATCHER */}
       <section className="container skill-swap-card">
         <h2>🔄 Skill Swap Matcher</h2>
         <form onSubmit={handleSkillMatch} className="swap-form">
@@ -146,7 +152,7 @@ function App() {
         )}
       </section>
 
-      {/* FEATURE 2: CAMPUS LEADERBOARD */}
+      {/* CAMPUS LEADERBOARD */}
       <section className="container leaderboard-section">
         <h2>🏆 Top Campus Earners</h2>
         <div className="leaderboard-grid">
@@ -166,7 +172,7 @@ function App() {
       {/* GIGS MARKETPLACE */}
       <section className="gigs container">
         <div className="gigs-header">
-          <h2>Available Campus Gigs {examMode && '🔥 (Exam Priority Filtering)'}</h2>
+          <h2>Available Campus Gigs {examMode && '🔥 (Exam Priority)'}</h2>
           <button className="btn-primary" onClick={() => setShowAddGig(true)}>
             + Post New Gig
           </button>
@@ -195,6 +201,54 @@ function App() {
           </div>
         )}
       </section>
+
+      {/* ADD GIG MODAL */}
+      {showAddGig && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Post a New Gig</h3>
+            <form onSubmit={handleAddGig}>
+              <input
+                type="text"
+                placeholder="Gig Title (e.g. React Web Assignment)"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+              />
+              <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                <option value="Design">Design</option>
+                <option value="Coding">Coding</option>
+                <option value="Notes">Notes</option>
+              </select>
+              <input
+                type="number"
+                placeholder="Price in ₹"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Contact / Email"
+                value={contact}
+                onChange={(e) => setContact(e.target.value)}
+                required
+              />
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={isUrgent}
+                  onChange={(e) => setIsUrgent(e.target.checked)}
+                /> Mark as Urgent
+              </label>
+              <div className="modal-actions">
+                <button type="submit" className="btn-primary">Post Gig</button>
+                <button type="button" className="btn-secondary" onClick={() => setShowAddGig(false)}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
